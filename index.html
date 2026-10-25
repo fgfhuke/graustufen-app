@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#2b2b2b" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <title>Graustufen</title>
+</head>
+<body>
+  <div id="app">
+    <main id="stage">
+      <div id="dropzone" tabindex="0" role="button" aria-label="Foto auswählen oder hineinziehen">
+        <p class="big">Foto hier hineinziehen</p>
+        <p>oder klicken zum Auswählen</p>
+        <p class="small">JPEG, PNG, HEIC/HEIF · Verarbeitung nur auf diesem Gerät</p>
+      </div>
+      <canvas id="preview" hidden aria-label="Vorschau"></canvas>
+      <p id="message" role="alert" hidden></p>
+    </main>
+    <aside id="panel">
+      <label class="row" for="levels">
+        <span>Graustufen</span>
+        <span class="stepper">
+          <button id="minus" type="button" aria-label="Eine Stufe weniger">−</button>
+          <input id="levels" type="number" min="2" max="16" step="1" value="4" inputmode="numeric" />
+          <button id="plus" type="button" aria-label="Eine Stufe mehr">+</button>
+        </span>
+      </label>
+      <div id="scale">
+        <canvas id="histogram" aria-label="Histogramm der Helligkeit"></canvas>
+        <div id="track"></div>
+        <div class="axis"><span>0 Schwarz</span><span id="readout"></span><span>255 Weiß</span></div>
+      </div>
+      <div class="row buttons">
+        <button id="reset" type="button">Gleichmäßig verteilen</button>
+        <button id="compare" type="button">Original zeigen (halten)</button>
+      </div>
+      <button id="open" type="button" class="secondary">Anderes Foto öffnen …</button>
+      <dl id="info" hidden><dt>Datei</dt><dd id="info-name"></dd><dt>Größe</dt><dd id="info-size"></dd></dl>
+    </aside>
+    <footer id="bar">
+      <button id="save-jpeg" type="button" disabled>JPEG speichern</button>
+      <button id="save-pdf" type="button" disabled>PDF (A4) speichern</button>
+      <button id="print" type="button" disabled>Drucken</button>
+      <span id="status" role="status"></span>
+    </footer>
+  </div>
+  <input id="file" type="file" accept=".heic,.heif,.jpg,.jpeg,.png,image/jpeg,image/png,image/heic,image/heif" hidden />
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

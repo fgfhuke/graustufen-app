@@ -1,0 +1,8 @@
+node_modules
+dist
+test-results
+playwright-report
+tests/fixtures/private/
+.DS_Store
+.venv
+tests/fixtures/huge-*.jpg

@@ -1,0 +1,6 @@
+@media print {
+  html, body { background: #fff !important; height: auto; }
+  #app, #file { display: none !important; }
+  #print-area { display: flex !important; justify-content: center; align-items: center; }
+  #print-area img { display: block; page-break-inside: avoid; }
+}
