@@ -12,6 +12,10 @@ for x in range(256):
     for y in range(64): g.putpixel((x, y), (x, x, x))
 g.save(out("gradient-256.png"))
 
+# 1b. Breiter Verlauf 4000x400 (größer als die Vorschau): Pixel x hat Grauwert round(x*255/3999)
+row = [round(x * 255 / 3999) for x in range(4000)]
+wide = Image.new("L", (4000, 400)); wide.putdata(row * 400); wide.save(out("gradient-wide-4000x400.png"))
+
 # 2. Grundfarben
 p = Image.new("RGB", (4, 1))
 for i, c in enumerate([(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 255)]): p.putpixel((i, 0), c)

@@ -1,5 +1,5 @@
 /** Zeichnet Grau-Bänder der Stufen und darüber das Histogramm (Wurzel-Skalierung). */
-export function drawHistogram(canvas: HTMLCanvasElement, hist: Uint32Array | null, lut: Uint8Array): void {
+export function drawHistogram(canvas: HTMLCanvasElement, hist: ArrayLike<number> | null, lut: Uint8Array): void {
   const dpr = window.devicePixelRatio || 1;
   const cssW = canvas.clientWidth || 300;
   const cssH = canvas.clientHeight || 80;

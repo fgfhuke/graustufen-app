@@ -4,6 +4,9 @@ export const JPEG_QUALITY = 0.92;
 
 export interface Rendered { blob: Blob; width: number; height: number }
 
+/** Was der Worker zum Rechnen braucht: Grundtabelle und Bereiche mit Masken in Vorschau-Auflösung (mw × mh). */
+export interface RenderSpec { base: Uint8Array; layers: { lut: Uint8Array; mask: Uint8Array }[]; mw: number; mh: number }
+
 export class RenderClient {
   private worker = new Worker(new URL('../workers/render.worker.ts', import.meta.url), { type: 'module' });
   private nextId = 1;
@@ -26,11 +29,11 @@ export class RenderClient {
     this.worker.postMessage({ type: 'load', bitmap }, [bitmap]);
   }
 
-  renderFull(lut: Uint8Array, progress?: (fraction: number) => void): Promise<Rendered> {
+  renderFull(spec: RenderSpec, progress?: (fraction: number) => void): Promise<Rendered> {
     const id = this.nextId++;
     return new Promise((ok, fail) => {
       this.pending.set(id, { ok, fail, progress });
-      this.worker.postMessage({ type: 'export', id, lut, quality: JPEG_QUALITY });
+      this.worker.postMessage({ type: 'export', id, ...spec, quality: JPEG_QUALITY });
     });
   }
 }

@@ -402,3 +402,38 @@ Noch nicht geprüft (nur auf einem echten iPhone möglich):
 3. Gefühl und Genauigkeit beim Ziehen der Griffe mit dem Finger (simuliert wurde nur Tippen und Layout).
 4. Verhalten als „Zum Home-Bildschirm“-App (Dateiauswahl, Offline-Start).
 5. Drucken über AirPrint.
+
+---
+
+## Etappe 12: Bereiche mit eigenen Einstellungen (Wunsch vom 25.10.2026)
+
+**Anlass:** Bei einem Portrait vor Wolkenhimmel passt eine einzige Einstellung nicht. Stellt man die Schwellen
+für das Gesicht ein, wird der Himmel zu einer glatten Fläche. Gewünscht: unterschiedliche Schwellen in
+unterschiedlichen Bildbereichen.
+
+**Bedienung**
+- Oben in der Bedienleiste stehen Reiter: **Ganzes Bild**, **Bereich 1** bis **Bereich 3**, **+ Bereich**.
+- Der gewählte Reiter bestimmt, welche Einstellungen Stufenzahl, Griffe und Histogramm gerade zeigen.
+- Bei einem Bereich erscheinen Malwerkzeuge: **Pinsel**, **Radierer**, **Pinselgröße**, **Maske zeigen**, **Bereich löschen**.
+- Man malt mit Finger oder Maus direkt ins Bild. Der bemalte Bereich wird orange hervorgehoben (abschaltbar).
+- Das Histogramm zeigt nur die Helligkeiten des gewählten Bereichs. Beim Himmel sieht man also genau die Wolkentöne.
+- Beim Reiter „Ganzes Bild“ zeigt es die Pixel, die zu keinem Bereich gehören.
+- Ein neues Foto entfernt die Bereiche. Die Einstellung für das ganze Bild bleibt erhalten.
+
+**Rechenweg**
+- Jeder Bereich hat eine Maske in Vorschau-Auflösung (Werte 0 bis 255) und eine eigene Nachschlagetabelle.
+- Pro Pixel: zuerst der Grauwert der Grundeinstellung, dann wird jeder Bereich gemäß seiner Maske darübergelegt.
+  `g = g + (LUT_Bereich[Y] − g) · Maske/255`, Bereiche in Reihenfolge.
+- Der Pinsel hat einen weichen Rand. Dadurch gibt es am Übergang wenige Pixel mit Zwischen-Grautönen statt einer harten Kante.
+- Export in Originalauflösung: Der Worker vergrößert die Masken streifenweise bilinear auf die volle Größe.
+  Der Streifen-Export und die iOS-Grenzen bleiben unverändert.
+
+**Tests**
+- Unit: Überlagerung (Maske 0, 128, 255), Pinselstempel und Radierer, bilineare Maskenvergrößerung, gewichtetes Histogramm.
+- Browser: Bereich anlegen, eine Bildhälfte bemalen, eigene Stufen einstellen. Geprüft werden die Pixel in Vorschau
+  und Export, auch bei einem Bild größer als die Vorschau (Masken werden dann vergrößert).
+
+**Stand 25.10.2026:** Umgesetzt und getestet. 30 Unit-Tests und 43 Browser-Tests sind grün, in Chromium, WebKit und
+im iPhone-Profil. Gefundener und behobener Fehler: Die Reiterleiste schrumpfte bei voller Seitenleiste auf
+Höhe null, und die Malwerkzeuge fingen die Klicks ab. Auf echtem iPhone noch zu prüfen: Malen mit dem Finger
+(Genauigkeit, kein ungewolltes Scrollen) und die Rechenzeit beim Export mit drei Bereichen bei 48 Megapixel.

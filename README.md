@@ -7,8 +7,9 @@ Alles läuft lokal im Browser, Fotos werden nie hochgeladen.
 ## Bedienung
 1. Foto hineinziehen oder anklicken (JPEG, PNG, HEIC/HEIF; iPhone-Fotos funktionieren).
 2. Anzahl der Graustufen einstellen, Griffe unter dem Histogramm verschieben (auch mit Pfeiltasten, Umschalt = 10er-Schritte).
-3. „Original zeigen“ gedrückt halten zum Vergleichen.
-4. JPEG speichern, PDF (A4) speichern oder drucken. Der Export erfolgt immer in voller Originalauflösung.
+3. Bereiche mit eigenen Einstellungen (zum Beispiel Himmel anders als Gesicht): „+ Bereich“ tippen, den Bereich im Bild übermalen, dann Stufen und Griffe für diesen Bereich einstellen. Bis zu drei Bereiche, Radierer und „Bereich löschen“ zum Korrigieren. Das Histogramm zeigt immer die Helligkeiten des gewählten Bereichs.
+4. „Original zeigen“ gedrückt halten zum Vergleichen.
+5. JPEG speichern, PDF (A4) speichern oder drucken. Der Export erfolgt immer in voller Originalauflösung.
 
 ## Als Programm auf dem Mac
 In Safari die App-Adresse öffnen, dann **Ablage → Zum Dock hinzufügen**. Danach startet sie wie ein normales Programm, auch ohne Internet.

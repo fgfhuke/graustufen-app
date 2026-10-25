@@ -3,8 +3,7 @@ import './print.css';
 import { toLuminance } from './core/luminance';
 import { defaultThresholds, clampLevels } from './core/thresholds';
 import { buildLut } from './core/lut';
-import { posterize } from './core/posterize';
-import { histogram } from './core/histogram';
+import { compose, stroke, layerHistogram, MAX_ZONES, type Layer } from './core/zones';
 import { decodeFile } from './io/decode';
 import { ValidationError } from './io/validate';
 import { RenderClient, baseName, download, makePdf, printImage, type Rendered } from './io/exporter';
@@ -19,22 +18,38 @@ const dropzone = $('dropzone');
 const message = $('message');
 const status = $('status');
 const fileInput = $<HTMLInputElement>('file');
+const zonesBar = $('zones');
+const brushBox = $('brush');
+const brushSize = $<HTMLInputElement>('brush-size');
+const showMask = $<HTMLInputElement>('show-mask');
+const zoneHint = $('zone-hint');
 const exportButtons = ['save-jpeg', 'save-pdf', 'print'].map((id) => $<HTMLButtonElement>(id));
 
 const renderer = new RenderClient();
 
-let levels = 4;
-let thresholds = defaultThresholds(levels);
-let lut = buildLut(thresholds);
+// --- Zustand ---
+// zones[0] ist die Grundeinstellung (ganzes Bild), zones[1..] sind gemalte Bereiche.
+interface Zone { levels: number; thresholds: number[]; lut: Uint8Array; mask: Uint8Array | null; painted: boolean }
+const makeZone = (levels: number, mask: Uint8Array | null): Zone => {
+  const thresholds = defaultThresholds(levels);
+  return { levels: clampLevels(levels), thresholds, lut: buildLut(thresholds), mask, painted: false };
+};
+const zones: Zone[] = [makeZone(4, null)];
+let active = 0;
 
-interface Loaded { name: string; lum: Uint8Array; hist: Uint32Array; out: ImageData; colorBitmap: ImageBitmap }
+interface Loaded { name: string; w: number; h: number; lum: Uint8Array; gray: Uint8Array; out: ImageData; colorBitmap: ImageBitmap }
 let loaded: Loaded | null = null;
+let hist: ArrayLike<number> | null = null;
 let comparing = false;
 let busy = false;
+let erasing = false;
+
+const cur = () => zones[active];
+const paintedLayers = (): Layer[] => zones.slice(1).filter((z) => z.painted).map((z) => ({ lut: z.lut, mask: z.mask! }));
 
 const slider = new ThresholdSlider(
   $('track'),
-  (t) => { thresholds = t; update(); },
+  (t) => { cur().thresholds = t; cur().lut = buildLut(t); update(); },
   (v) => { $('readout').textContent = v === null ? '' : `Grenze bei ${v}`; },
 );
 
@@ -43,37 +58,156 @@ function showError(text: string | null): void {
   message.textContent = text ?? '';
 }
 
+// --- Histogramm des gewählten Bereichs ---
+function refreshHistogram(): void {
+  if (!loaded) { hist = null; return; }
+  const masks = zones.slice(1).filter((z) => z.painted).map((z) => z.mask!);
+  if (active === 0) hist = layerHistogram(loaded.lum, masks, 0);
+  else if (!cur().painted) hist = null;
+  else hist = layerHistogram(loaded.lum, masks, masks.indexOf(cur().mask!) + 1);
+}
+
 // --- Vorschau (verkleinert, schnell) ---
 let scheduled = false;
 function update(): void {
-  lut = buildLut(thresholds);
   if (scheduled) return;
   scheduled = true;
-  requestAnimationFrame(() => {
-    scheduled = false;
-    paint();
-  });
+  requestAnimationFrame(() => { scheduled = false; paint(); });
 }
 
 function paint(): void {
-  drawHistogram(histCanvas, loaded?.hist ?? null, lut);
+  drawHistogram(histCanvas, hist, cur().lut);
   if (!loaded) return;
-  if (comparing) {
-    preview.getContext('2d')!.drawImage(loaded.colorBitmap, 0, 0);
-  } else {
-    posterize(loaded.lum, lut, loaded.out.data);
-    preview.getContext('2d')!.putImageData(loaded.out, 0, 0);
+  const ctx = preview.getContext('2d')!;
+  if (comparing) { ctx.drawImage(loaded.colorBitmap, 0, 0); return; }
+  const g = compose(loaded.lum, zones[0].lut, paintedLayers(), loaded.gray);
+  const d = loaded.out.data;
+  const overlay = active > 0 && showMask.checked && cur().painted ? cur().mask! : null;
+  for (let i = 0, j = 0; i < g.length; i++, j += 4) {
+    const v = g[i];
+    if (overlay && overlay[i]) {
+      const a = overlay[i] * 0.45 / 255; // orange Hervorhebung
+      d[j] = v + (230 - v) * a; d[j + 1] = v + (90 - v) * a; d[j + 2] = v + (20 - v) * a;
+    } else { d[j] = v; d[j + 1] = v; d[j + 2] = v; }
+    d[j + 3] = 255;
   }
+  ctx.putImageData(loaded.out, 0, 0);
+}
+
+function syncControls(): void {
+  levelsInput.value = String(cur().levels);
+  slider.setThresholds(cur().thresholds);
 }
 
 function setLevels(n: number): void {
-  levels = clampLevels(n);
-  levelsInput.value = String(levels);
-  thresholds = defaultThresholds(levels);
-  slider.setThresholds(thresholds);
+  const z = cur();
+  z.levels = clampLevels(n);
+  z.thresholds = defaultThresholds(z.levels);
+  z.lut = buildLut(z.thresholds);
+  syncControls();
   update();
 }
 
+// --- Bereiche: Reiter und Malwerkzeuge ---
+function renderZones(): void {
+  zonesBar.replaceChildren();
+  zones.forEach((_, k) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = k === 0 ? 'Ganzes Bild' : `Bereich ${k}`;
+    b.setAttribute('aria-pressed', String(k === active));
+    b.dataset.zone = String(k);
+    b.addEventListener('click', () => selectZone(k));
+    zonesBar.appendChild(b);
+  });
+  if (loaded && zones.length - 1 < MAX_ZONES) {
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.id = 'zone-add';
+    add.className = 'add';
+    add.textContent = '+ Bereich';
+    add.addEventListener('click', addZone);
+    zonesBar.appendChild(add);
+  }
+  brushBox.hidden = active === 0;
+  zoneHint.hidden = active === 0 || cur().painted;
+  preview.classList.toggle('painting', active > 0);
+}
+
+function selectZone(k: number): void {
+  active = k;
+  renderZones();
+  syncControls();
+  refreshHistogram();
+  update();
+}
+
+function addZone(): void {
+  if (!loaded || zones.length - 1 >= MAX_ZONES) return;
+  // Neuer Bereich startet mit der Einstellung des ganzen Bildes, damit man von dort aus anpasst
+  const z = makeZone(zones[0].levels, new Uint8Array(loaded.w * loaded.h));
+  z.thresholds = zones[0].thresholds.slice();
+  z.lut = buildLut(z.thresholds);
+  zones.push(z);
+  selectZone(zones.length - 1);
+}
+
+function deleteZone(): void {
+  if (active === 0) return;
+  zones.splice(active, 1);
+  selectZone(Math.min(active, zones.length - 1));
+}
+
+function setTool(erase: boolean): void {
+  erasing = erase;
+  $('tool-paint').setAttribute('aria-pressed', String(!erase));
+  $('tool-erase').setAttribute('aria-pressed', String(erase));
+}
+
+/** Bildschirmposition -> Pixel in der Vorschau (berücksichtigt das eingepasste Bild, object-fit: contain). */
+function toImage(ev: PointerEvent) {
+  const r = preview.getBoundingClientRect();
+  const scale = Math.min(r.width / preview.width, r.height / preview.height);
+  const offX = (r.width - preview.width * scale) / 2;
+  const offY = (r.height - preview.height * scale) / 2;
+  return { x: (ev.clientX - r.left - offX) / scale, y: (ev.clientY - r.top - offY) / scale, scale };
+}
+
+let last: { x: number; y: number } | null = null;
+preview.addEventListener('pointerdown', (ev) => {
+  if (active === 0 || !loaded || comparing) return;
+  ev.preventDefault();
+  preview.setPointerCapture(ev.pointerId);
+  const p = toImage(ev);
+  const radius = Number(brushSize.value) / 2 / p.scale;
+  stroke(cur().mask!, loaded.w, loaded.h, p.x, p.y, p.x, p.y, radius, erasing);
+  cur().painted = true;
+  zoneHint.hidden = true;
+  last = p;
+  update();
+});
+preview.addEventListener('pointermove', (ev) => {
+  if (!last || !loaded) return;
+  const p = toImage(ev);
+  stroke(cur().mask!, loaded.w, loaded.h, last.x, last.y, p.x, p.y, Number(brushSize.value) / 2 / p.scale, erasing);
+  last = p;
+  update();
+});
+const endStroke = () => {
+  if (!last) return;
+  last = null;
+  refreshHistogram();
+  update();
+};
+preview.addEventListener('pointerup', endStroke);
+preview.addEventListener('pointercancel', endStroke);
+
+$('tool-paint').addEventListener('click', () => setTool(false));
+$('tool-erase').addEventListener('click', () => setTool(true));
+$('zone-delete').addEventListener('click', deleteZone);
+showMask.addEventListener('change', update);
+
+// --- Laden ---
 const PREVIEW_MAX = 2000;
 
 async function loadFile(file: File): Promise<void> {
@@ -93,17 +227,16 @@ async function loadFile(file: File): Promise<void> {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, pw, ph);
     ctx.drawImage(small, 0, 0);
-    const rgba = ctx.getImageData(0, 0, pw, ph);
-    const lum = toLuminance(rgba.data);
-    // Vorheriges Bild freigeben
+    const lum = toLuminance(ctx.getImageData(0, 0, pw, ph).data);
     loaded?.colorBitmap.close();
     const colorBitmap = await createImageBitmap(c);
     small.close();
     preview.width = pw;
     preview.height = ph;
     const imgW = bitmap.width, imgH = bitmap.height;
-    loaded = { name: file.name, lum, hist: histogram(lum), out: new ImageData(pw, ph), colorBitmap };
+    loaded = { name: file.name, w: pw, h: ph, lum, gray: new Uint8Array(pw * ph), out: new ImageData(pw, ph), colorBitmap };
     renderer.load(bitmap); // Original geht an den Worker (Besitz wird übertragen)
+    zones.length = 1; // Bereiche gehören zum alten Foto
     dropzone.hidden = true;
     preview.hidden = false;
     $('info').hidden = false;
@@ -112,6 +245,7 @@ async function loadFile(file: File): Promise<void> {
       `${imgW} × ${imgH} (${imgH > imgW ? 'Hochformat' : imgW > imgH ? 'Querformat' : 'quadratisch'})` +
       (viaFallback ? ' · HEIC über Reservedekoder' : '');
     preview.dataset.ready = '1';
+    selectZone(0);
     paint();
     setExportEnabled(true);
     status.textContent = '';
@@ -134,7 +268,8 @@ async function runExport(label: string, action: (r: Rendered) => Promise<void>):
   showError(null);
   status.textContent = `${label}: Foto wird in voller Auflösung berechnet …`;
   try {
-    const r = await renderer.renderFull(lut, (f) => { status.textContent = `${label}: ${Math.round(f * 100)} % berechnet …`; });
+    const spec = { base: zones[0].lut, layers: paintedLayers(), mw: loaded.w, mh: loaded.h };
+    const r = await renderer.renderFull(spec, (f) => { status.textContent = `${label}: ${Math.round(f * 100)} % berechnet …`; });
     await action(r);
     status.textContent = `Fertig (${r.width} × ${r.height})`;
   } catch (e) {
@@ -146,7 +281,7 @@ async function runExport(label: string, action: (r: Rendered) => Promise<void>):
   }
 }
 
-const outName = (ext: string) => `${baseName(loaded!.name)}_${levels}stufen.${ext}`;
+const outName = (ext: string) => `${baseName(loaded!.name)}_${zones[0].levels}stufen.${ext}`;
 // Auf Touch-Geräten (iPhone): fertige Datei erst nach einem zweiten Fingertipp teilen/sichern,
 // weil Safari das Teilen nur direkt nach einer Berührung erlaubt, nicht nach langer Rechenzeit.
 const ready = $<HTMLButtonElement>('ready');
@@ -201,9 +336,9 @@ window.addEventListener('drop', (e) => {
 
 // --- Bedienelemente ---
 levelsInput.addEventListener('change', () => setLevels(Number(levelsInput.value)));
-$('minus').addEventListener('click', () => setLevels(levels - 1));
-$('plus').addEventListener('click', () => setLevels(levels + 1));
-$('reset').addEventListener('click', () => setLevels(levels));
+$('minus').addEventListener('click', () => setLevels(cur().levels - 1));
+$('plus').addEventListener('click', () => setLevels(cur().levels + 1));
+$('reset').addEventListener('click', () => setLevels(cur().levels));
 const compare = $('compare');
 preview.addEventListener('contextmenu', (e) => e.preventDefault());
 const setCompare = (on: boolean) => { comparing = on; paint(); };
@@ -212,8 +347,14 @@ compare.addEventListener('contextmenu', (e) => e.preventDefault());
 ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => compare.addEventListener(ev, () => setCompare(false)));
 new ResizeObserver(() => paint()).observe(histCanvas);
 
-setLevels(levels);
-(window as unknown as { __app: unknown }).__app = { get levels() { return levels; }, get thresholds() { return thresholds; } };
+renderZones();
+syncControls();
+update();
+(window as unknown as { __app: unknown }).__app = {
+  get levels() { return cur().levels; },
+  get thresholds() { return cur().thresholds; },
+  get zones() { return zones.length - 1; },
+};
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   navigator.serviceWorker.register('./sw.js').catch(() => undefined);
