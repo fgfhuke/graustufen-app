@@ -7,8 +7,9 @@ export default defineConfig({
   workers: 1,
   use: { baseURL: 'http://localhost:4173', serviceWorkers: 'block' },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /mobile\.spec/ },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] }, testIgnore: /mobile\.spec/ },
+    { name: 'iphone', use: { ...devices['iPhone 15'] }, testMatch: /mobile\.spec/ },
   ],
   webServer: { command: 'npm run build && npx vite preview --port 4173 --strictPort', url: 'http://localhost:4173', timeout: 120_000, reuseExistingServer: true },
 });

@@ -3,11 +3,11 @@
 @media (prefers-color-scheme: dark) { :root { --bg:#2b2b2b; --fg:#ececec; --panel:#363636; --line:#555; --muted:#a0a0a8; } }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); }
+html, body { height: 100%; overscroll-behavior: none; -webkit-text-size-adjust: 100%; margin: 0; background: var(--bg); color: var(--fg); }
 #app { display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr) auto; height: 100%; }
 #stage { grid-row: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 0; min-width: 0; }
 #panel { grid-row: 1; background: var(--panel); border-left: 1px solid var(--line); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-#bar { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+#bar { padding-bottom: calc(10px + env(safe-area-inset-bottom)); grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
 #preview { display: block; min-width: 0; min-height: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; background: transparent; }
 #dropzone { width: 100%; max-width: 560px; aspect-ratio: 3/2; border: 2px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-align: center; color: var(--muted); }
 #dropzone.over, #dropzone:focus-visible { border-color: var(--accent); color: var(--fg); outline: none; }
@@ -32,3 +32,20 @@ input[type=number] { background: var(--bg); border: 1px solid var(--line); borde
 #status { color: var(--muted); font-size: .9rem; margin-left: auto; }
 #print-area { display: none; }
 @media (max-width: 760px) { #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto; } #panel { grid-row: 2; border-left: 0; border-top: 1px solid var(--line); } #bar { grid-row: 3; } }
+
+#ready { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; flex: 1 1 100%; }
+@media (display-mode: standalone) { #app { padding-top: env(safe-area-inset-top); } }
+/* Touch: Griffe abwechselnd oben und unten, damit auch 15 Griffe mit dem Finger greifbar bleiben */
+@media (pointer: coarse) {
+  #track { height: 104px; }
+  .handle { width: 30px; height: 50%; top: 0; }
+  .handle:nth-child(even) { top: 50%; }
+  input[type=number] { font-size: 1.1rem; }
+}
+@media (max-width: 760px) {
+  #stage { padding: 8px; min-height: 38vh; }
+  #panel { padding: 12px; gap: 12px; max-height: 52vh; }
+  #bar { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); align-items: stretch; }
+  #bar button { flex: 1 1 0; padding: 8px 6px; }
+  #status { flex: 1 1 100%; margin-left: 0; }
+}

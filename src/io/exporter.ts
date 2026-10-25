@@ -7,29 +7,29 @@ export interface Rendered { blob: Blob; width: number; height: number }
 export class RenderClient {
   private worker = new Worker(new URL('../workers/render.worker.ts', import.meta.url), { type: 'module' });
   private nextId = 1;
-  private pending = new Map<number, { ok: (r: Rendered) => void; fail: (e: Error) => void }>();
+  private pending = new Map<number, { ok: (r: Rendered) => void; fail: (e: Error) => void; progress?: (f: number) => void }>();
 
   constructor() {
     this.worker.onmessage = (ev) => {
       const m = ev.data;
       const p = this.pending.get(m.id);
       if (!p) return;
+      if (m.type === 'progress') { p.progress?.(m.done); return; }
       this.pending.delete(m.id);
       if (m.type === 'done') p.ok({ blob: m.blob, width: m.width, height: m.height });
       else p.fail(new Error(m.message));
     };
   }
 
-  /** Übergibt eine Kopie des Originals an den Worker (das Original bleibt für die Vorschau erhalten). */
-  async load(bitmap: ImageBitmap): Promise<void> {
-    const copy = await createImageBitmap(bitmap);
-    this.worker.postMessage({ type: 'load', bitmap: copy }, [copy]);
+  /** Übergibt das Original an den Worker (kein Kopieren: spart auf dem iPhone viel Arbeitsspeicher). */
+  load(bitmap: ImageBitmap): void {
+    this.worker.postMessage({ type: 'load', bitmap }, [bitmap]);
   }
 
-  renderFull(lut: Uint8Array): Promise<Rendered> {
+  renderFull(lut: Uint8Array, progress?: (fraction: number) => void): Promise<Rendered> {
     const id = this.nextId++;
     return new Promise((ok, fail) => {
-      this.pending.set(id, { ok, fail });
+      this.pending.set(id, { ok, fail, progress });
       this.worker.postMessage({ type: 'export', id, lut, quality: JPEG_QUALITY });
     });
   }

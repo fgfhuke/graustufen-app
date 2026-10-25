@@ -27,7 +27,7 @@ let levels = 4;
 let thresholds = defaultThresholds(levels);
 let lut = buildLut(thresholds);
 
-interface Loaded { name: string; bitmap: ImageBitmap; lum: Uint8Array; hist: Uint32Array; out: ImageData; colorBitmap: ImageBitmap }
+interface Loaded { name: string; lum: Uint8Array; hist: Uint32Array; out: ImageData; colorBitmap: ImageBitmap }
 let loaded: Loaded | null = null;
 let comparing = false;
 let busy = false;
@@ -96,20 +96,20 @@ async function loadFile(file: File): Promise<void> {
     const rgba = ctx.getImageData(0, 0, pw, ph);
     const lum = toLuminance(rgba.data);
     // Vorheriges Bild freigeben
-    loaded?.bitmap.close();
     loaded?.colorBitmap.close();
     const colorBitmap = await createImageBitmap(c);
     small.close();
     preview.width = pw;
     preview.height = ph;
-    loaded = { name: file.name, bitmap, lum, hist: histogram(lum), out: new ImageData(pw, ph), colorBitmap };
-    await renderer.load(bitmap);
+    const imgW = bitmap.width, imgH = bitmap.height;
+    loaded = { name: file.name, lum, hist: histogram(lum), out: new ImageData(pw, ph), colorBitmap };
+    renderer.load(bitmap); // Original geht an den Worker (Besitz wird übertragen)
     dropzone.hidden = true;
     preview.hidden = false;
     $('info').hidden = false;
     $('info-name').textContent = file.name;
     $('info-size').textContent =
-      `${bitmap.width} × ${bitmap.height} (${bitmap.height > bitmap.width ? 'Hochformat' : bitmap.width > bitmap.height ? 'Querformat' : 'quadratisch'})` +
+      `${imgW} × ${imgH} (${imgH > imgW ? 'Hochformat' : imgW > imgH ? 'Querformat' : 'quadratisch'})` +
       (viaFallback ? ' · HEIC über Reservedekoder' : '');
     preview.dataset.ready = '1';
     paint();
@@ -134,7 +134,7 @@ async function runExport(label: string, action: (r: Rendered) => Promise<void>):
   showError(null);
   status.textContent = `${label}: Foto wird in voller Auflösung berechnet …`;
   try {
-    const r = await renderer.renderFull(lut);
+    const r = await renderer.renderFull(lut, (f) => { status.textContent = `${label}: ${Math.round(f * 100)} % berechnet …`; });
     await action(r);
     status.textContent = `Fertig (${r.width} × ${r.height})`;
   } catch (e) {
@@ -147,8 +147,36 @@ async function runExport(label: string, action: (r: Rendered) => Promise<void>):
 }
 
 const outName = (ext: string) => `${baseName(loaded!.name)}_${levels}stufen.${ext}`;
-$('save-jpeg').addEventListener('click', () => runExport('JPEG', async (r) => download(r.blob, outName('jpg'))));
-$('save-pdf').addEventListener('click', () => runExport('PDF', async (r) => download(await makePdf(r), outName('pdf'))));
+// Auf Touch-Geräten (iPhone): fertige Datei erst nach einem zweiten Fingertipp teilen/sichern,
+// weil Safari das Teilen nur direkt nach einer Berührung erlaubt, nicht nach langer Rechenzeit.
+const ready = $<HTMLButtonElement>('ready');
+const coarse = window.matchMedia('(pointer: coarse)').matches;
+let pending: { blob: Blob; name: string } | null = null;
+
+async function deliver(blob: Blob, name: string): Promise<void> {
+  const file = new File([blob], name, { type: blob.type });
+  if (coarse && navigator.canShare?.({ files: [file] })) {
+    pending = { blob, name };
+    ready.textContent = `Fertig: „${name}“ sichern oder teilen`;
+    ready.hidden = false;
+    return;
+  }
+  download(blob, name);
+}
+ready.addEventListener('click', async () => {
+  if (!pending) return;
+  const { blob, name } = pending;
+  try {
+    await navigator.share({ files: [new File([blob], name, { type: blob.type })] });
+  } catch (e) {
+    if ((e as Error).name !== 'AbortError') download(blob, name);
+  }
+  pending = null;
+  ready.hidden = true;
+});
+
+$('save-jpeg').addEventListener('click', () => runExport('JPEG', (r) => deliver(r.blob, outName('jpg'))));
+$('save-pdf').addEventListener('click', () => runExport('PDF', async (r) => deliver(await makePdf(r), outName('pdf'))));
 $('print').addEventListener('click', () => runExport('Drucken', (r) => printImage(r)));
 
 // --- Eingabe ---

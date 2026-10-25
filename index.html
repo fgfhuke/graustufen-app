@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'none'" />
   <meta name="theme-color" content="#2b2b2b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Graustufen" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <title>Graustufen</title>
 </head>
@@ -44,6 +48,7 @@
       <button id="save-jpeg" type="button" disabled>JPEG speichern</button>
       <button id="save-pdf" type="button" disabled>PDF (A4) speichern</button>
       <button id="print" type="button" disabled>Drucken</button>
+      <button id="ready" type="button" hidden>Fertig</button>
       <span id="status" role="status"></span>
     </footer>
   </div>

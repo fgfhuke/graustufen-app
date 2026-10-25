@@ -12,7 +12,7 @@ Alles läuft lokal im Browser, Fotos werden nie hochgeladen.
 
 ## Als Programm auf dem Mac
 In Safari die App-Adresse öffnen, dann **Ablage → Zum Dock hinzufügen**. Danach startet sie wie ein normales Programm, auch ohne Internet.
-Auf dem iPhone: **Teilen → Zum Home-Bildschirm** (Export in Vollauflösung ist dort wegen der Canvas-Grenze noch nicht vorbereitet, siehe PLAN.md, R3).
+Auf dem iPhone: **Teilen → Zum Home-Bildschirm**. Nach dem Berechnen erscheint eine Schaltfläche zum Sichern oder Teilen (Fotos, Dateien, AirDrop). Der Export in voller Auflösung funktioniert dort in Streifen. Ein Test auf echtem iPhone steht noch aus (siehe PLAN.md, Etappe 11).
 
 ## Entwicklung
 ```

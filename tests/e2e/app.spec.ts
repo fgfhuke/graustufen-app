@@ -143,3 +143,33 @@ test('Nach dem Laden ist die Ablagefläche weg und die Vorschau passt in den Ber
   const prev = (await page.locator('#preview').boundingBox())!;
   expect(prev.x + prev.width).toBeLessThanOrEqual(stage.x + stage.width + 1);
 });
+
+test('Exportierte JPEG-Datei ist ein gültiges Graustufenbild mit den richtigen Werten', async ({ page }) => {
+  await load(page, 'gradient-256.png');
+  await setLevels(page, 3);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#save-jpeg')]);
+  const b64 = readFileSync((await dl.path())!).toString('base64');
+  const r = await page.evaluate(async (b64) => {
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const bmp = await createImageBitmap(new Blob([bin], { type: 'image/jpeg' }));
+    const c = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(bmp, 0, 0);
+    const at = (x: number) => Array.from(ctx.getImageData(x, 32, 1, 1).data.slice(0, 3));
+    return { w: bmp.width, h: bmp.height, a: at(20), b: at(120), c: at(240) };
+  }, b64);
+  expect([r.w, r.h]).toEqual([256, 64]);
+  for (const [px, want] of [[r.a, 0], [r.b, 128], [r.c, 255]] as const) {
+    expect(px[0]).toBe(px[1]);
+    expect(px[1]).toBe(px[2]);
+    expect(Math.abs(px[0] - want)).toBeLessThanOrEqual(3);
+  }
+});
+
+test('PDF bettet das Graustufen-JPEG ein', async ({ page }) => {
+  await load(page, 'gradient-256.png');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#save-pdf')]);
+  const pdf = readFileSync((await dl.path())!).toString('latin1');
+  expect(pdf).toContain('/DCTDecode');
+  expect(pdf).toContain('/DeviceGray');
+});

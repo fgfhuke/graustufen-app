@@ -380,7 +380,25 @@ korrekt herauskommt.
 | 8 Drucken | Umgesetzt (Druckbereich mit exakter A4-Größe), Druckdialog nur manuell prüfbar |
 | 9 PWA | Erledigt: Manifest, Symbole, Service Worker, Offline-Test in Chromium und WebKit, strenge CSP |
 | 10 Feinschliff | README, LIZENZEN, Vergleichstaste erledigt; Prüfung mit echten iPhone-Fotos steht aus |
-| 11 iPhone | Nicht begonnen (optional) |
+| 11 iPhone-Vorbereitung | Technisch vorbereitet, echter iPhone-Test steht aus (siehe unten) |
 
 Abweichung vom Plan: Die HEIC-Reserve läuft nicht in einem eigenen Worker. Messung: 400×300-Testbild unter 1 s.
 Mit einem echten 48-Megapixel-HEIC in Chrome noch prüfen (Risiko R1).
+
+### Etappe 11: iPhone (Stand 25.10.2026)
+
+Umgesetzt:
+- **Export ohne großes Canvas (löst Risiko R3):** Der Worker verarbeitet das Foto in Streifen von höchstens 4 Megapixel. Ein eigener, abhängigkeitsfreier Graustufen-JPEG-Encoder (`src/core/jpegGray.ts`) schreibt die Streifen direkt in die Datei. Die iOS-Grenze von ca. 16,7 Megapixel pro Canvas wird nie berührt. Dieser Weg gilt auf allen Geräten, ist also auch am Mac getestet (60 Megapixel in Chromium und WebKit).
+- **Encoder geprüft:** Unit-Tests für Aufbau und Tabellen, unabhängige Gegenprobe mit dem Pillow-Dekoder (glatte Flächen exakt, Rauschen im üblichen JPEG-Rahmen), im Browser dekodiert und auf Werte geprüft. Ausgabe ist ein echtes Graustufen-JPEG (1 Komponente), das PDF bettet es als DeviceGray ein.
+- **Weniger Arbeitsspeicher:** Das Original wird an den Worker übergeben statt kopiert (vorher doppelt im Speicher).
+- **Fortschrittsanzeige** in Prozent beim Export.
+- **Sichern in zwei Schritten auf Touch-Geräten:** Nach der Berechnung erscheint eine Schaltfläche „Fertig: … sichern oder teilen“, die das Teilen-Menü von iOS öffnet (Bild sichern, In Dateien sichern, AirDrop). Grund: Safari erlaubt das Teilen nur direkt nach einer Berührung, nicht nach langer Rechenzeit. Ohne Teilen-Menü bleibt der normale Download.
+- **Touch-Bedienung:** Griffe sitzen auf Touch-Geräten abwechselnd in zwei Reihen und sind mindestens 44 Punkte hoch, auch bei 16 Stufen ohne Überlappung. Seitenleiste unter dem Bild, Sicherheitsbereiche (Notch, Home-Balken) berücksichtigt, Meta-Angaben für „Zum Home-Bildschirm“.
+- **Tests:** iPhone-15-Profil in WebKit (Layout, Überlappung, Teilen-Ablauf mit nachgebildetem Teilen-Menü).
+
+Noch nicht geprüft (nur auf einem echten iPhone möglich):
+1. Ob Safari auf dem iPhone ein 48-Megapixel-HEIC ohne Speicherabbruch dekodiert (Grenze hängt vom Modell ab).
+2. Ob das Teilen-Menü mit der erzeugten Datei sauber öffnet.
+3. Gefühl und Genauigkeit beim Ziehen der Griffe mit dem Finger (simuliert wurde nur Tippen und Layout).
+4. Verhalten als „Zum Home-Bildschirm“-App (Dateiauswahl, Offline-Start).
+5. Drucken über AirPrint.

@@ -1,7 +1,12 @@
 /// <reference lib="webworker" />
 import { luminanceOf } from '../core/luminance';
+import { GrayJpegEncoder } from '../core/jpegGray';
 
 let original: ImageBitmap | null = null;
+const post = (m: unknown) => (self as unknown as Worker).postMessage(m);
+
+/** Maximal ca. 4 Megapixel pro Streifen: weit unter der iOS-Canvas-Grenze von 16,7 Megapixel. */
+const STRIP_PIXELS = 4_000_000;
 
 type In =
   | { type: 'load'; bitmap: ImageBitmap }
@@ -17,23 +22,29 @@ self.onmessage = async (ev: MessageEvent<In>) => {
   try {
     if (!original) throw new Error('Kein Bild geladen.');
     const { width: w, height: h } = original;
-    const canvas = new OffscreenCanvas(w, h);
+    const rows = Math.min(h, Math.max(8, Math.floor(STRIP_PIXELS / w / 8) * 8));
+    const canvas = new OffscreenCanvas(w, rows);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) throw new Error('Zeichenfläche nicht verfügbar.');
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(original, 0, 0);
-    const img = ctx.getImageData(0, 0, w, h);
-    const d = img.data;
+    const enc = new GrayJpegEncoder(w, h, Math.round(m.quality * 100));
     const lut = m.lut;
-    for (let i = 0; i < d.length; i += 4) {
-      const g = lut[luminanceOf(d[i], d[i + 1], d[i + 2])];
-      d[i] = d[i + 1] = d[i + 2] = g;
+    const line = new Uint8Array(w);
+    for (let y0 = 0; y0 < h; y0 += rows) {
+      const sh = Math.min(rows, h - y0);
+      ctx.fillStyle = '#fff'; // Transparenz wird zu Weiß
+      ctx.fillRect(0, 0, w, sh);
+      ctx.drawImage(original, 0, y0, w, sh, 0, 0, w, sh);
+      const d = ctx.getImageData(0, 0, w, sh).data;
+      for (let r = 0; r < sh; r++) {
+        let p = r * w * 4;
+        for (let x = 0; x < w; x++, p += 4) line[x] = lut[luminanceOf(d[p], d[p + 1], d[p + 2])];
+        enc.addRow(line);
+      }
+      post({ type: 'progress', id: m.id, done: (y0 + sh) / h });
     }
-    ctx.putImageData(img, 0, 0);
-    const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: m.quality });
-    (self as unknown as Worker).postMessage({ type: 'done', id: m.id, blob, width: w, height: h });
+    const bytes = enc.finish();
+    post({ type: 'done', id: m.id, blob: new Blob([bytes as BlobPart], { type: 'image/jpeg' }), width: w, height: h });
   } catch (e) {
-    (self as unknown as Worker).postMessage({ type: 'error', id: m.id, message: String((e as Error).message ?? e) });
+    post({ type: 'error', id: m.id, message: String((e as Error).message ?? e) });
   }
 };
