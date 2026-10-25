@@ -3,49 +3,68 @@
 @media (prefers-color-scheme: dark) { :root { --bg:#2b2b2b; --fg:#ececec; --panel:#363636; --line:#555; --muted:#a0a0a8; } }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { height: 100%; overscroll-behavior: none; -webkit-text-size-adjust: 100%; margin: 0; background: var(--bg); color: var(--fg); }
-#app { display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr) auto; height: 100%; }
-#stage { grid-row: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 0; min-width: 0; }
-#panel { grid-row: 1; background: var(--panel); border-left: 1px solid var(--line); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-#bar { padding-bottom: calc(10px + env(safe-area-inset-bottom)); grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
-#preview { display: block; min-width: 0; min-height: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; background: transparent; }
-#dropzone { width: 100%; max-width: 560px; aspect-ratio: 3/2; border: 2px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-align: center; color: var(--muted); }
-#dropzone.over, #dropzone:focus-visible { border-color: var(--accent); color: var(--fg); outline: none; }
-#dropzone .big { font-size: 1.4rem; color: var(--fg); margin: 0 0 4px; } #dropzone p { margin: 2px 0; } .small { font-size: .8rem; }
-#message { position: absolute; bottom: 16px; left: 16px; right: 16px; background: #b3261e; color: #fff; padding: 10px 14px; border-radius: 8px; margin: 0; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.row.buttons { flex-direction: column; align-items: stretch; }
-.stepper { display: flex; gap: 4px; }
-.stepper input { width: 3.5rem; text-align: center; font-size: 1.1rem; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); -webkit-text-size-adjust: 100%; }
 button, input { font: inherit; color: inherit; }
 button { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; min-height: 44px; min-width: 44px; cursor: pointer; }
 button:hover:not(:disabled) { border-color: var(--accent); } button:disabled { opacity: .45; cursor: default; }
 button.secondary { color: var(--muted); }
 input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+
+#stage { position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; min-width: 0; }
+#preview { display: block; min-width: 0; min-height: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; background: transparent; }
+#dropzone { width: 100%; max-width: 560px; aspect-ratio: 3/2; border: 2px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-align: center; color: var(--muted); padding: 8px; }
+#dropzone.over, #dropzone:focus-visible { border-color: var(--accent); color: var(--fg); outline: none; }
+#dropzone .big { font-size: 1.4rem; color: var(--fg); margin: 0 0 4px; } #dropzone p { margin: 2px 0; } .small { font-size: .8rem; }
+#message { position: absolute; bottom: 8px; left: 8px; right: 8px; background: #b3261e; color: #fff; padding: 10px 14px; border-radius: 8px; margin: 0; }
+
+#panel { background: var(--panel); display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.row.buttons { flex-direction: column; align-items: stretch; }
+.stepper { display: flex; gap: 4px; }
+.stepper input { width: 3.5rem; text-align: center; font-size: 1.1rem; }
 #scale { display: flex; flex-direction: column; }
 #histogram { width: 100%; height: 90px; display: block; border: 1px solid var(--line); border-bottom: 0; }
-#track { position: relative; height: 44px; margin: 0; border: 1px solid var(--line); border-top: 0; background: linear-gradient(to right, #000, #fff); }
+#track { position: relative; height: 44px; border: 1px solid var(--line); border-top: 0; background: linear-gradient(to right, #000, #fff); }
 .handle { position: absolute; top: 0; width: 22px; min-width: 0; height: 100%; padding: 0; transform: translateX(-50%); border-radius: 6px; background: var(--accent); border: 2px solid #fff; touch-action: none; cursor: ew-resize; }
 .handle:focus-visible { outline: 3px solid #0a84ff; }
 .axis { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); margin-top: 4px; }
 #info { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: .85rem; margin: 0; } #info dt { color: var(--muted); } #info dd { margin: 0; overflow-wrap: anywhere; }
-#status { color: var(--muted); font-size: .9rem; margin-left: auto; }
-#print-area { display: none; }
-@media (max-width: 760px) { #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto; } #panel { grid-row: 2; border-left: 0; border-top: 1px solid var(--line); } #bar { grid-row: 3; } }
 
+#bar { display: flex; gap: 8px; align-items: center; padding: 10px 16px; background: var(--panel); flex-wrap: wrap; }
+.bar-title { display: none; margin: 0; font-size: 1rem; }
+#status { color: var(--muted); font-size: .9rem; margin-left: auto; }
 #ready { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; flex: 1 1 100%; }
-@media (display-mode: standalone) { #app { padding-top: env(safe-area-inset-top); } }
-/* Touch: Griffe abwechselnd oben und unten, damit auch 15 Griffe mit dem Finger greifbar bleiben */
+#print-area { display: none; }
+
+/* Computer: feste Fläche, Bild links, Bedienleiste rechts, Export-Leiste unten */
+@media (min-width: 761px) {
+  html, body { height: 100%; }
+  #app { display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr) auto; height: 100%; }
+  #stage { grid-row: 1; padding: 16px; }
+  #panel { grid-row: 1; border-left: 1px solid var(--line); overflow-y: auto; }
+  #bar { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+}
+
+/* Handy: Bild bleibt oben stehen und ist groß, Einstellungen kompakt darunter,
+   Speichern und Drucken weiter unten (nach unten scrollen) */
+@media (max-width: 760px) {
+  html { overscroll-behavior-y: none; }
+  #app { display: block; padding-top: env(safe-area-inset-top); }
+  #stage { position: sticky; top: 0; z-index: 2; height: 54svh; padding: 6px 6px 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  #panel { gap: 10px; padding: 10px 12px; }
+  .stepper input { width: 3rem; }
+  .stepper button, #panel button { min-height: 40px; padding: 4px 10px; }
+  #histogram { height: 56px; }
+  #track { height: 92px; }
+  .row.buttons { flex-direction: row; } .row.buttons button { flex: 1 1 0; font-size: .9rem; }
+  #info { font-size: .8rem; }
+  #bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 12px calc(24px + env(safe-area-inset-bottom)); border-top: 8px solid var(--bg); }
+  .bar-title { display: block; }
+  #bar button { min-height: 52px; }
+  #status { margin-left: 0; }
+}
 @media (pointer: coarse) {
-  #track { height: 104px; }
+  /* Griffe abwechselnd oben und unten, damit auch 15 Griffe mit dem Finger greifbar bleiben */
   .handle { width: 30px; height: 50%; top: 0; }
   .handle:nth-child(even) { top: 50%; }
-  input[type=number] { font-size: 1.1rem; }
-}
-@media (max-width: 760px) {
-  #stage { padding: 8px; min-height: 38vh; }
-  #panel { padding: 12px; gap: 12px; max-height: 52vh; }
-  #bar { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); align-items: stretch; }
-  #bar button { flex: 1 1 0; padding: 8px 6px; }
-  #status { flex: 1 1 100%; margin-left: 0; }
 }

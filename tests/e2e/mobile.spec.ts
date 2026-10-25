@@ -25,9 +25,18 @@ test('iPhone: Layout passt in den Bildschirm, Griffe sind mit dem Finger greifba
     const overlap = a.x < c.x + c.w && c.x < a.x + a.w && a.y < c.y + c.h && c.y < a.y + a.h;
     expect(overlap, `Griff ${i} und ${j}`).toBe(false);
   }
-  // Export-Leiste und Vorschau sichtbar
+  // Bild ist groß, überdeckt keine Einstellungen; Einstellungen sind ohne Scrollen erreichbar
+  const vh = page.viewportSize()!.height;
+  const prev = (await page.locator('#preview').boundingBox())!;
+  const lv = (await page.locator('#levels').boundingBox())!;
+  expect(prev.height).toBeGreaterThanOrEqual(vh * 0.4);
+  expect(prev.y + prev.height).toBeLessThanOrEqual(lv.y + 1);
+  await expect(page.locator('#track')).toBeInViewport();
+  await expect(page.locator('#levels')).toBeInViewport();
+  // Speichern und Drucken liegen weiter unten
+  await page.locator('#save-jpeg').scrollIntoViewIfNeeded();
   await expect(page.locator('#save-jpeg')).toBeInViewport();
-  await expect(page.locator('#preview')).toBeInViewport();
+  await expect(page.locator('#print')).toBeInViewport();
 });
 
 test('iPhone: Sichern läuft in zwei Schritten über das Teilen-Menü', async ({ page }) => {

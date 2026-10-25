@@ -159,6 +159,7 @@ async function deliver(blob: Blob, name: string): Promise<void> {
     pending = { blob, name };
     ready.textContent = `Fertig: „${name}“ sichern oder teilen`;
     ready.hidden = false;
+    ready.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     return;
   }
   download(blob, name);
