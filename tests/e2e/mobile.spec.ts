@@ -58,3 +58,18 @@ test('iPhone: Sichern läuft in zwei Schritten über das Teilen-Menü', async ({
   expect(shared[0][1]).toBe('image/jpeg');
   expect(shared[0][2]).toBeGreaterThan(500);
 });
+
+test('iPhone: langes Drücken markiert keinen Text und öffnet kein Menü', async ({ page }) => {
+  await page.goto('/');
+  await page.setInputFiles('#file', fx('portrait-exif6.jpg'));
+  await expect(page.locator('#preview[data-ready="1"]')).toBeVisible();
+  for (const sel of ['#compare', '#reset', '#save-jpeg', '#preview', '.axis']) {
+    const st = await page.locator(sel).first().evaluate((e) => { const c = getComputedStyle(e) as any; return [c.userSelect || c.webkitUserSelect, c.webkitTouchCallout]; });
+    expect(st[0], sel).toBe('none');
+  }
+  const ev = await page.locator('#compare').evaluate((e) => { const x = new MouseEvent('contextmenu', { cancelable: true, bubbles: true }); e.dispatchEvent(x); return x.defaultPrevented; });
+  expect(ev).toBe(true);
+  // Eingabefeld bleibt bedienbar
+  const sel = await page.locator('#levels').evaluate((e) => { const c = getComputedStyle(e) as any; return c.userSelect || c.webkitUserSelect; });
+  expect(sel).not.toBe('none');
+});

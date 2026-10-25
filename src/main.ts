@@ -205,8 +205,10 @@ $('minus').addEventListener('click', () => setLevels(levels - 1));
 $('plus').addEventListener('click', () => setLevels(levels + 1));
 $('reset').addEventListener('click', () => setLevels(levels));
 const compare = $('compare');
+preview.addEventListener('contextmenu', (e) => e.preventDefault());
 const setCompare = (on: boolean) => { comparing = on; paint(); };
 compare.addEventListener('pointerdown', () => setCompare(true));
+compare.addEventListener('contextmenu', (e) => e.preventDefault());
 ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => compare.addEventListener(ev, () => setCompare(false)));
 new ResizeObserver(() => paint()).observe(histCanvas);
 
