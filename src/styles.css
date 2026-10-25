@@ -56,6 +56,11 @@ input[type=number] { background: var(--bg); border: 1px solid var(--line); borde
 .check input { width: 20px; height: 20px; accent-color: var(--accent); }
 .hint { margin: 0; font-size: .8rem; color: var(--muted); }
 #preview.painting { touch-action: none; cursor: crosshair; }
+#brush-cursor { position: absolute; z-index: 3; pointer-events: none; border-radius: 50%; transform: translate(-50%, -50%);
+  border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.7), inset 0 0 0 1px rgba(0,0,0,.7); }
+#preview.painting.with-cursor { cursor: none; }
+kbd { font: inherit; font-size: .75rem; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+@media (pointer: coarse) { .keys { display: none; } }
 
 /* Computer: feste Fläche, Bild links, Bedienleiste rechts, Export-Leiste unten */
 @media (min-width: 761px) {

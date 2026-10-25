@@ -23,6 +23,7 @@ const brushBox = $('brush');
 const brushSize = $<HTMLInputElement>('brush-size');
 const showMask = $<HTMLInputElement>('show-mask');
 const zoneHint = $('zone-hint');
+const brushCursor = $('brush-cursor');
 const exportButtons = ['save-jpeg', 'save-pdf', 'print'].map((id) => $<HTMLButtonElement>(id));
 
 const renderer = new RenderClient();
@@ -132,6 +133,7 @@ function renderZones(): void {
   brushBox.hidden = active === 0;
   zoneHint.hidden = active === 0 || cur().painted;
   preview.classList.toggle('painting', active > 0);
+  placeCursor();
 }
 
 function selectZone(k: number): void {
@@ -201,6 +203,58 @@ const endStroke = () => {
 };
 preview.addEventListener('pointerup', endStroke);
 preview.addEventListener('pointercancel', endStroke);
+
+// --- Pinsel-Kreis als Mauszeiger (nur mit Maus/Trackpad) ---
+let pointerAt: { x: number; y: number } | null = null;
+function placeCursor(): void {
+  const show = active > 0 && !!loaded && !!pointerAt && !comparing;
+  brushCursor.hidden = !show;
+  preview.classList.toggle('with-cursor', show);
+  if (!show) return;
+  const st = $('stage').getBoundingClientRect();
+  const d = Number(brushSize.value);
+  brushCursor.style.width = brushCursor.style.height = `${d}px`;
+  brushCursor.style.left = `${pointerAt!.x - st.left}px`;
+  brushCursor.style.top = `${pointerAt!.y - st.top}px`;
+}
+preview.addEventListener('pointermove', (ev) => {
+  if (ev.pointerType !== 'mouse') return;
+  pointerAt = { x: ev.clientX, y: ev.clientY };
+  placeCursor();
+});
+preview.addEventListener('pointerleave', () => { pointerAt = null; placeCursor(); });
+
+/** Pinselgröße ändern, begrenzt auf den Bereich des Reglers. */
+function resizeBrush(factor: number): void {
+  const min = Number(brushSize.min), max = Number(brushSize.max);
+  const cur = Number(brushSize.value);
+  let next = Math.round(cur * factor);
+  if (next === cur) next = cur + (factor > 1 ? 1 : -1);
+  brushSize.value = String(Math.min(max, Math.max(min, next)));
+  placeCursor();
+}
+brushSize.addEventListener('input', placeCursor);
+
+// Umschalt + Scrollrad über dem Bild: Pinsel größer (nach oben) oder kleiner (nach unten).
+// macOS meldet Umschalt+Scrollen oft als waagerechtes Scrollen, daher zählt auch deltaX.
+preview.addEventListener('wheel', (ev) => {
+  if (!ev.shiftKey || active === 0) return;
+  ev.preventDefault();
+  const delta = ev.deltaY !== 0 ? ev.deltaY : ev.deltaX;
+  if (delta === 0) return;
+  const unit = ev.deltaMode === 1 ? 33 : ev.deltaMode === 2 ? 300 : 1; // Zeilen/Seiten in Pixel umrechnen
+  resizeBrush(Math.exp(-delta * unit * 0.002));
+}, { passive: false });
+
+// Tasten P (Pinsel) und R (Radierer), nur wenn ein Bereich gewählt ist und kein Eingabefeld den Fokus hat
+window.addEventListener('keydown', (ev) => {
+  if (active === 0 || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  const t = ev.target as HTMLElement | null;
+  if (t && (t.tagName === 'INPUT' && (t as HTMLInputElement).type !== 'range' && (t as HTMLInputElement).type !== 'checkbox' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  const k = ev.key.toLowerCase();
+  if (k === 'p') { setTool(false); ev.preventDefault(); }
+  else if (k === 'r') { setTool(true); ev.preventDefault(); }
+});
 
 $('tool-paint').addEventListener('click', () => setTool(false));
 $('tool-erase').addEventListener('click', () => setTool(true));
@@ -341,7 +395,7 @@ $('plus').addEventListener('click', () => setLevels(cur().levels + 1));
 $('reset').addEventListener('click', () => setLevels(cur().levels));
 const compare = $('compare');
 preview.addEventListener('contextmenu', (e) => e.preventDefault());
-const setCompare = (on: boolean) => { comparing = on; paint(); };
+const setCompare = (on: boolean) => { comparing = on; paint(); placeCursor(); };
 compare.addEventListener('pointerdown', () => setCompare(true));
 compare.addEventListener('contextmenu', (e) => e.preventDefault());
 ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => compare.addEventListener(ev, () => setCompare(false)));

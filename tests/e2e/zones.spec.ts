@@ -114,3 +114,49 @@ test('Höchstens drei Bereiche, neues Foto entfernt sie', async ({ page }) => {
   await expect(page.locator('#zones button[data-zone]')).toHaveCount(1);
   await expect(page.locator('#zone-add')).toHaveCount(1);
 });
+
+test('Tasten P/R und Umschalt + Scrollrad für die Pinselgröße', async ({ page }) => {
+  await load(page, 'gradient-256.png');
+  // Ohne gewählten Bereich passiert nichts
+  await page.keyboard.press('r');
+  await page.click('#zone-add');
+  await expect(page.locator('#keys-hint')).toBeVisible();
+  await page.locator('body').click({ position: { x: 1, y: 1 } }).catch(() => undefined);
+  await page.keyboard.press('r');
+  await expect(page.locator('#tool-erase')).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('p');
+  await expect(page.locator('#tool-paint')).toHaveAttribute('aria-pressed', 'true');
+  // Im Zahlenfeld werden Buchstaben nicht abgefangen
+  await page.focus('#levels');
+  await page.keyboard.press('r');
+  await expect(page.locator('#tool-paint')).toHaveAttribute('aria-pressed', 'true');
+  // Strg/Cmd + R bleibt dem Browser vorbehalten
+  await page.locator('#tool-erase').click();
+  await page.keyboard.press('ControlOrMeta+p');
+  await expect(page.locator('#tool-erase')).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('p');
+  // Kreis sitzt mittig unter dem Mauszeiger
+  const pb = (await page.locator('#preview').boundingBox())!;
+  await page.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2);
+  const cb0 = (await page.locator('#brush-cursor').boundingBox())!;
+  expect(Math.abs(cb0.x + cb0.width / 2 - (pb.x + pb.width / 2))).toBeLessThanOrEqual(2);
+  expect(Math.abs(cb0.y + cb0.height / 2 - (pb.y + pb.height / 2))).toBeLessThanOrEqual(2);
+  // Pinselkreis folgt der Maus in Pinselgröße
+  await expect(page.locator('#brush-cursor')).toBeVisible();
+  const size = async () => Number(await page.locator('#brush-size').inputValue());
+  const start = await size();
+  expect((await page.locator('#brush-cursor').boundingBox())!.width).toBeCloseTo(start, 0);
+  await page.keyboard.down('Shift');
+  await page.mouse.wheel(0, -200);
+  await expect.poll(size).toBeGreaterThan(start);
+  const bigger = await size();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(size).toBeLessThan(bigger);
+  await page.keyboard.up('Shift');
+  // Ohne Umschalt ändert das Scrollrad die Größe nicht
+  const now = await size();
+  await page.mouse.wheel(0, -200);
+  await page.waitForTimeout(100);
+  expect(await size()).toBe(now);
+  expect((await page.locator('#brush-cursor').boundingBox())!.width).toBeCloseTo(now, 0);
+});

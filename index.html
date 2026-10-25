@@ -21,6 +21,7 @@
         <p class="small">JPEG, PNG, HEIC/HEIF · Verarbeitung nur auf diesem Gerät</p>
       </div>
       <canvas id="preview" hidden aria-label="Vorschau"></canvas>
+      <div id="brush-cursor" hidden></div>
       <p id="message" role="alert" hidden></p>
     </main>
     <aside id="panel">
@@ -29,12 +30,13 @@
         <div class="row tools">
           <button id="tool-paint" type="button" aria-pressed="true">Pinsel</button>
           <button id="tool-erase" type="button" aria-pressed="false">Radierer</button>
-          <label class="size"><span>Größe</span><input id="brush-size" type="range" min="10" max="200" value="70" /></label>
+          <label class="size"><span>Größe</span><input id="brush-size" type="range" min="10" max="300" value="70" /></label>
         </div>
         <div class="row tools">
           <label class="check"><input id="show-mask" type="checkbox" checked /> Bereich hervorheben</label>
           <button id="zone-delete" type="button" class="secondary">Bereich löschen</button>
         </div>
+        <p id="keys-hint" class="hint keys">Tasten: <kbd>P</kbd> Pinsel · <kbd>R</kbd> Radierer · <kbd>⇧</kbd> + Scrollrad: Pinselgröße</p>
         <p id="zone-hint" class="hint">Malen Sie jetzt mit Finger oder Maus im Bild über den Bereich, zum Beispiel den Himmel.</p>
       </div>
       <label class="row" for="levels">
